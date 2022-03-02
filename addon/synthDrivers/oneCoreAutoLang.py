@@ -12,6 +12,7 @@ from collections import OrderedDict
 import ctypes
 import winreg
 import wave
+from addon.synthDrivers import langdetect
 from synthDriverHandler import (
 	findAndSetNextSynth,
 	isDebugForSynthDriver,
@@ -30,6 +31,7 @@ import speechXml
 import languageHandler
 import winVersion
 import NVDAHelper
+import langdetects
 
 from speech.commands import (
 	IndexCommand,
@@ -75,10 +77,10 @@ class _OcSsmlConverter(speechXml.SsmlConverter):
 		return None
 
 	def convertLangChangeCommand(self, command):
-		lcid = languageHandler.localeNameToWindowsLCID(command.lang)
-		if lcid is languageHandler.LCID_NONE:
-			log.debugWarning(f"Invalid language: {command.lang}")
-			return None
+		#lcid = languageHandler.localeNameToWindowsLCID(command.lang)
+		#if lcid is languageHandler.LCID_NONE:
+		#	log.debugWarning(f"Invalid language: {command.lang}")
+		#	return None
 		return super().convertLangChangeCommand(command)
 
 class _OcPreAPI5SsmlConverter(_OcSsmlConverter):
@@ -235,6 +237,8 @@ class SynthDriver(SynthDriver):
 		else:
 			conv = _OcPreAPI5SsmlConverter(self.language, self._rate, self._pitch, self._volume)
 		text = conv.convertToXml(speechSequence)
+		log.debug('"{0}: {1}'.format(text, langdetect.detect(text)))
+		
 		# #7495: Calling WaveOutOpen blocks for ~100 ms if called from the callback
 		# when the SSML includes marks.
 		# We're not quite sure why.
