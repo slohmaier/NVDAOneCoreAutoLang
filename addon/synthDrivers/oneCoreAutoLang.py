@@ -194,6 +194,11 @@ class SynthDriver(SynthDriver):
 		self._consecutiveSpeechFailures = 0
 		#load fasttext model
 		self._fasttextmdl = fasttext.load_model(os.path.join(fasttext_dist, 'lid.176.bin'))
+		#make language map
+		voices = self._getAvailableVoices()
+		for voiceId in voices.keys():
+			voice = voices[voiceId]
+			# attributes: 'displayName', 'id', 'language', 'onecoreIndex'
 
 	def _maybeInitPlayer(self, wav):
 		"""Initialize audio playback based on the wave header provided by the synthesizer.
@@ -238,11 +243,24 @@ class SynthDriver(SynthDriver):
 			self._player.stop()
 
 	def speak(self, speechSequence):
+		log.debug(
+			'SPEECHSEQUENCE:\n'+
+			'\n'.join([str(i)+'|||'+str(dir(i)) for i in speechSequence])
+		)
+		if len(speechSequence) == 3:
+			langcmd = speechSequence[0]
+			text = speechSequence[1]
+			indexcmd = speechSequence[2]
+			if self._fasttextmdl.predict(text)[0][0][9:] == 'de':
+				langcmd.lang = 'de_DE'
+			else:
+				langcmd.lang = 'en_US'
+			speechSequence = [langcmd, text, indexcmd]
+
 		if self.supportsProsodyOptions:
 			conv = _OcSsmlConverter(self.language)
 		else:
 			conv = _OcPreAPI5SsmlConverter(self.language, self._rate, self._pitch, self._volume)
-		log.debug('SPEECHSEQUENCE: '+str(speechSequence))
 		text = conv.convertToXml(speechSequence)
 		
 		# #7495: Calling WaveOutOpen blocks for ~100 ms if called from the callback
