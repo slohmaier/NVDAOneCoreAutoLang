@@ -193,12 +193,13 @@ class SynthDriver(SynthDriver):
 		self.voice=self._getDefaultVoice()
 		self._consecutiveSpeechFailures = 0
 		#load fasttext model
-		self._fasttextmdl = fasttext.load_model(os.path.join(fasttext_dist, 'lid.176.bin'))
-		#make language map
-		voices = self._getAvailableVoices()
-		for voiceId in voices.keys():
-			voice = voices[voiceId]
-			# attributes: 'displayName', 'id', 'language', 'onecoreIndex'
+		self._fasttextmdl = fasttext.load_model(os.path.join(fasttext_di
+		self._availableFastTextLangs = {}
+		voices = self.availableVoices
+		for voice in voices.values():
+			lang, dialect = tuple(voice.language.split('_', 1))
+			if not lang in self._availableFastTextLangs:
+				self._availableFastTextLangs[lang] = voice.language
 
 	def _maybeInitPlayer(self, wav):
 		"""Initialize audio playback based on the wave header provided by the synthesizer.
@@ -247,14 +248,19 @@ class SynthDriver(SynthDriver):
 			'SPEECHSEQUENCE:\n'+
 			'\n'.join([str(i)+'|||'+str(dir(i)) for i in speechSequence])
 		)
+		#fix languageCommand with fasttext.predict
 		if len(speechSequence) == 3:
+			#expand sequence
 			langcmd = speechSequence[0]
 			text = speechSequence[1]
 			indexcmd = speechSequence[2]
-			if self._fasttextmdl.predict(text)[0][0][9:] == 'de':
-				langcmd.lang = 'de_DE'
-			else:
-				langcmd.lang = 'en_US'
+
+			#predict language. if not in available Languages. use default
+			defaultLang = self.availableVoices[self._get_voice()].language
+			predictedLang = fasttext.predict(text)[0][0][9:] #strip '__label__'
+			langcmd.lang = self._availableFastTextLangs.get(predictedLang, defaultLang)
+
+			#reconstruct with predicted language
 			speechSequence = [langcmd, text, indexcmd]
 
 		if self.supportsProsodyOptions:
