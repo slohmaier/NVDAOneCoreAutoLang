@@ -242,7 +242,7 @@ class SynthDriver(SynthDriver):
 			conv = _OcSsmlConverter(self.language)
 		else:
 			conv = _OcPreAPI5SsmlConverter(self.language, self._rate, self._pitch, self._volume)
-		log.debug('SPEAK({0}, "{1}"'.format(str(self._fasttextmdl.predict(speechSequence)), str(speechSequence)))
+		log.debug('SPEECHSEQUENCE: '+str(speechSequence))
 		text = conv.convertToXml(speechSequence)
 		
 		# #7495: Calling WaveOutOpen blocks for ~100 ms if called from the callback
