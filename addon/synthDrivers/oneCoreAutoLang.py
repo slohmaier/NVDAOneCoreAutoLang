@@ -12,7 +12,6 @@ from collections import OrderedDict
 import ctypes
 import winreg
 import wave
-from addon.synthDrivers import langdetect
 from synthDriverHandler import (
 	findAndSetNextSynth,
 	isDebugForSynthDriver,
@@ -31,7 +30,7 @@ import speechXml
 import languageHandler
 import winVersion
 import NVDAHelper
-import langdetects
+from .langdetect import detect
 
 from speech.commands import (
 	IndexCommand,
@@ -43,6 +42,11 @@ from speech.commands import (
 	VolumeCommand,
 	PhonemeCommand,
 )
+
+#load fasttext and its model
+fasttext_dist = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fasttext-dist')
+sys.path.append(fasttext_dist)
+import fasttext
 
 #: The number of 100-nanosecond units in 1 second.
 HUNDRED_NS_PER_SEC = 10000000 # 1000000000 ns per sec / 100 ns
@@ -77,10 +81,10 @@ class _OcSsmlConverter(speechXml.SsmlConverter):
 		return None
 
 	def convertLangChangeCommand(self, command):
-		#lcid = languageHandler.localeNameToWindowsLCID(command.lang)
-		#if lcid is languageHandler.LCID_NONE:
-		#	log.debugWarning(f"Invalid language: {command.lang}")
-		#	return None
+		lcid = languageHandler.localeNameToWindowsLCID(command.lang)
+		if lcid is languageHandler.LCID_NONE:
+			log.debugWarning(f"Invalid language: {command.lang}")
+			return None
 		return super().convertLangChangeCommand(command)
 
 class _OcPreAPI5SsmlConverter(_OcSsmlConverter):
@@ -188,6 +192,8 @@ class SynthDriver(SynthDriver):
 		# Initialize the voice to a sane default
 		self.voice=self._getDefaultVoice()
 		self._consecutiveSpeechFailures = 0
+		#load fasttext model
+		self._fasttextmdl = fasttext.load_model(os.path.join(fasttext_dist, 'lid.176.bin'))
 
 	def _maybeInitPlayer(self, wav):
 		"""Initialize audio playback based on the wave header provided by the synthesizer.
@@ -236,8 +242,8 @@ class SynthDriver(SynthDriver):
 			conv = _OcSsmlConverter(self.language)
 		else:
 			conv = _OcPreAPI5SsmlConverter(self.language, self._rate, self._pitch, self._volume)
+		log.debug('SPEAK({0}, "{1}"'.format(str(self._fasttextmdl.predict(speechSequence)), str(speechSequence)))
 		text = conv.convertToXml(speechSequence)
-		log.debug('"{0}: {1}'.format(text, langdetect.detect(text)))
 		
 		# #7495: Calling WaveOutOpen blocks for ~100 ms if called from the callback
 		# when the SSML includes marks.
@@ -345,6 +351,7 @@ class SynthDriver(SynthDriver):
 				# Parameter change.
 				# Note that, if prosody otions aren't supported, this code will never be executed.
 				func, value = item
+				log.debug('PARAMETER-CHANGE: {0}({1})'.format(str(func),str(value)))
 				value = ctypes.c_double(value)
 				func(self._handle, value)
 				continue
@@ -355,6 +362,7 @@ class SynthDriver(SynthDriver):
 			# ocSpeech_speak is async.
 			# It will call _callback in a background thread once done,
 			# which will eventually process the queue again.
+			log.debug('SPEAK: '+str(item))
 			self._dll.ocSpeech_speak(self._handle, item)
 			return
 		if isDebugForSynthDriver():
