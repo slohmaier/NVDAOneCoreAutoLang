@@ -193,7 +193,7 @@ class SynthDriver(SynthDriver):
 		self.voice=self._getDefaultVoice()
 		self._consecutiveSpeechFailures = 0
 		#load fasttext model
-		self._fasttextmdl = fasttext.load_model(os.path.join(fasttext_di
+		self._fasttextmdl = fasttext.load_model(os.path.join(fasttext_dist, 'lid.176.bin'))
 		self._availableFastTextLangs = {}
 		voices = self.availableVoices
 		for voice in voices.values():
@@ -257,7 +257,7 @@ class SynthDriver(SynthDriver):
 
 			#predict language. if not in available Languages. use default
 			defaultLang = self.availableVoices[self._get_voice()].language
-			predictedLang = fasttext.predict(text)[0][0][9:] #strip '__label__'
+			predictedLang = self._fasttextmdl.predict(text)[0][0][9:] #strip '__label__'
 			langcmd.lang = self._availableFastTextLangs.get(predictedLang, defaultLang)
 
 			#reconstruct with predicted language
