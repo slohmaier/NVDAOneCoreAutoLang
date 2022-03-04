@@ -258,7 +258,11 @@ class SynthDriver(SynthDriver):
 			#predict language. if not in available Languages. use default
 			defaultLang = self.availableVoices[self._get_voice()].language
 			predictedLang = self._fasttextmdl.predict(text)[0][0][9:] #strip '__label__'
-			langcmd.lang = self._availableFastTextLangs.get(predictedLang, defaultLang)
+			#don't use a different dialect due to sorting
+			if defaultLang.startswith(predictedLang):
+				langcmd.lang = defaultLang
+			else:
+				langcmd.lang = self._availableFastTextLangs.get(predictedLang, defaultLang)
 
 			#reconstruct with predicted language
 			speechSequence = [langcmd, text, indexcmd]
