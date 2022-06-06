@@ -19,7 +19,7 @@ addon_info = {
 	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
 	"addon_description" : _("Uses automatic language detection to choose the correct voice."),
 	# version
-	"addon_version" : "0.1.0",
+	"addon_version" : "0.2.0",
 	# Author(s)
 	"addon_author" : "Stefan Lohmaier <stefan@slohmaier.de>",
 	# URL for the add-on documentation support
