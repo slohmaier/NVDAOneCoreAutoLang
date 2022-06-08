@@ -16,3 +16,9 @@ FastText with the language identification model is used to identify
 the language for every spolen text and correct the language, if a
 voice for the language is installed. The default set language is used
 otherwise.
+
+# Usage
+
+The Plugin identifies the languages by the installed Speech packages in Windows. To add or remove languages with their voices use Windows settings:
+Windows-Settings -> Languages -> SPeech
+The plugin looks for installed lagnuage-speech-packs on start and uses the languages if they are installed.
