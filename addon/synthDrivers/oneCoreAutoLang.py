@@ -247,16 +247,8 @@ class OneCoreSynthDriver(SynthDriver):
 			self._queuedSpeech = []
 		if self._player:
 			self._player.stop()
-
-	def speak(self, speechSequence):
-		log.debug('SPEECHSEQUENCE:'+str(speechSequence))
-
-		#deconstruct speechsequence
-		langChangeCmd = speechSequence[0]
-		text = ''.join(speechSequence[1:-1])
-		indexcmd = speechSequence[-1]
-
-		#predict Language
+		
+	def _predictLang(self, langChangeCmd: LangChangeCommand, text: str):
 		predictedLang = self._fasttextmdl.predict(text)[0][0][9:] #strip '__label__'
 
 		#don't use a different dialect due to sorting
@@ -265,7 +257,25 @@ class OneCoreSynthDriver(SynthDriver):
 			langChangeCmd.lang = defaultLang
 		else:
 			langChangeCmd.lang = self._availableFastTextLangs.get(predictedLang, defaultLang)
-		speechSequence = [langChangeCmd, text, indexcmd]
+			log.debug('AUTOLANG: Switching to '+str(predictedLang))
+		return langChangeCmd
+
+	def speak(self, speechSequence):
+		log.debug('SPEECHSEQUENCE:'+str(speechSequence))
+
+		#deconstruct speechsequence
+		langCmd = None
+		text = ''
+		for item in speechSequence:
+			if type(item) == LangChangeCommand:
+				langcmd = item
+			elif type(item) == str:
+				text += item
+			else:
+				self._predictLang(langcmd, text)
+				text = ''
+		if text and not langcmd is None:
+			self._predictLang(langcmd, text)
 
 		if self.supportsProsodyOptions:
 			conv = _OcSsmlConverter(self.language)
