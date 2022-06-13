@@ -249,10 +249,13 @@ class OneCoreSynthDriver(SynthDriver):
 			self._player.stop()
 		
 	def _predictLang(self, langChangeCmd: LangChangeCommand, text: str):
+		#create new langchangecmd if is none
+		defaultLang = self.availableVoices[self._get_voice()].language
+		if langChangeCmd is None:
+			langChangeCmd = LangChangeCommand(defaultLang)
 		predictedLang = self._fasttextmdl.predict(text)[0][0][9:] #strip '__label__'
 
 		#don't use a different dialect due to sorting
-		defaultLang = self.availableVoices[self._get_voice()].language
 		if defaultLang.startswith(predictedLang):
 			langChangeCmd.lang = defaultLang
 		else:
@@ -264,18 +267,27 @@ class OneCoreSynthDriver(SynthDriver):
 		log.debug('SPEECHSEQUENCE:'+str(speechSequence))
 
 		#deconstruct speechsequence
-		langCmd = None
+		langChangeCmd = None
+		insertLangChangeCmd = None
 		text = ''
 		for item in speechSequence:
 			if type(item) == LangChangeCommand:
-				langcmd = item
+				langChangeCmd = item
 			elif type(item) == str:
 				text += item
 			else:
-				self._predictLang(langcmd, text)
+				if langChangeCmd is None:
+					insertLangChangeCmd = self._predictLang(langChangeCmd, text)
+				else:
+					self._predictLang(langChangeCmd, text)
 				text = ''
-		if text and not langcmd is None:
-			self._predictLang(langcmd, text)
+		if text and not langChangeCmd is None:
+			if langChangeCmd is None:
+				insertLangChangeCmd = self._predictLang(langChangeCmd, text)
+			else:
+				self._predictLang(langChangeCmd, text)
+		if not insertLangChangeCmd is None:
+			speechSequence.insert(0, insertLangChangeCmd)
 
 		if self.supportsProsodyOptions:
 			conv = _OcSsmlConverter(self.language)
