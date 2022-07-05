@@ -1,3 +1,7 @@
+# Discontinued
+
+The functionality of this plugin working with multiple synthesizers wernt into a new plugin: https://github.com/slohmaier/langPredict
+
 # OneCore AutoLang #
 
 OneCore AutoLang was written by Stefan Lohmaier
